@@ -2,9 +2,13 @@ terraform {
   required_providers {
     aws = {
       source = "hashicorp/aws"
-      version = "5.53.0"    //Tieni d'occhio la versione del template
+      version = "5.53.0"
     }
   }
+}
+
+provider "aws" {
+  region = var.aws_region
 }
 
 data "aws_ami" "ecs_ami" {
@@ -82,7 +86,7 @@ resource "aws_cloudwatch_log_group" "ecs" {
 
 resource "aws_ecs_task_definition" "cars" {
   family                   = "cars-td"
-  network_mode             = "bridge"
+  network_mode             = "awsvpc"
   requires_compatibilities = ["EC2"]
   cpu                      = "256"
   memory                   = "1024"
@@ -114,7 +118,7 @@ resource "aws_ecs_task_definition" "cars" {
 
 resource "aws_ecs_task_definition" "bikes" {
   family                   = "bikes-td"
-  network_mode             = "bridge"
+  network_mode             = "awsvpc"
   requires_compatibilities = ["EC2"]
   cpu                      = "256"
   memory                   = "1024"
@@ -177,6 +181,8 @@ resource "aws_lb_target_group" "cars_tg" {
   protocol = "HTTP"
   vpc_id   = var.vpc_id
 
+  target_type = "ip"
+
   health_check {
     path                = "/cars"
     interval            = 10
@@ -191,6 +197,8 @@ resource "aws_lb_target_group" "bikes_tg" {
   port     = 80
   protocol = "HTTP"
   vpc_id   = var.vpc_id
+
+  target_type = "ip"
 
   health_check {
     path                = "/bikes"
@@ -295,7 +303,6 @@ resource "aws_ecs_service" "cars" {
   network_configuration {
     subnets          = var.subnet_ids
     security_groups  = [aws_security_group.ecs_sg.id]
-    assign_public_ip = true
   }
 
   load_balancer {
@@ -318,7 +325,6 @@ resource "aws_ecs_service" "bikes" {
   network_configuration {
     subnets          = var.subnet_ids
     security_groups  = [aws_security_group.ecs_sg.id]
-    assign_public_ip = true
   }
 
   load_balancer {
@@ -343,14 +349,14 @@ resource "aws_cloudwatch_metric_alarm" "alb_500s_alarm" {
   }
 
   alarm_actions = [
-    "arn:aws:sns:us-east-1:123456789012:MySNSTopic"
+    "arn:aws:sns:eu-south-1:123456789012:MySNSTopic"
   ]
 
   ok_actions = [
-    "arn:aws:sns:us-east-1:123456789012:MySNSTopic"
+    "arn:aws:sns:eu-south-1:123456789012:MySNSTopic"
   ]
 
   insufficient_data_actions = [
-    "arn:aws:sns:us-east-1:123456789012:MySNSTopic"
+    "arn:aws:sns:eu-south-1:123456789012:MySNSTopic"
   ]
 }
