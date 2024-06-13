@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Template per creare una VPC con due subnet pubbliche, un Internet Gateway e una Route Table associata.
+
+Parameters:
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: CIDR Block per la VPC
+
+  PublicSubnet1Cidr:
+    Type: String
+    Default: 10.0.1.0/24
+    Description: CIDR Block per la prima subnet pubblica
+
+  PublicSubnet2Cidr:
+    Type: String
+    Default: 10.0.2.0/24
+    Description: CIDR Block per la seconda subnet pubblica
+
+  RepositoryName:
+    Type: String
+    Description: Il nome del repository da creare
+
+Resources:
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties: 
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags: 
+        - Key: Name
+          Value: MyVPC
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: MyInternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: 
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      VpcId: !Ref MyVPC
+      CidrBlock: !Ref PublicSubnet1Cidr
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      Tags: 
+        - Key: Name
+          Value: PublicSubnet1
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      VpcId: !Ref MyVPC
+      CidrBlock: !Ref PublicSubnet2Cidr
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [ 1, !GetAZs ]
+      Tags: 
+        - Key: Name
+          Value: PublicSubnet2
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref MyVPC
+      Tags: 
+        - Key: Name
+          Value: PublicRouteTable
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties: 
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  CodeCommitRepository:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryName: !Ref RepositoryName
+      RepositoryDescription: "Questo è un repository creato con AWS CloudFormation."
+      Tags:
+        - Key: Name
+          Value: !Ref RepositoryName
+
+Outputs:
+  VPCId:
+    Description: ID della VPC
+    Value: !Ref MyVPC
+
+  PublicSubnet1Id:
+    Description: ID della prima subnet pubblica
+    Value: !Ref PublicSubnet1
+
+  PublicSubnet2Id:
+    Description: ID della seconda subnet pubblica
+    Value: !Ref PublicSubnet2
+
+  InternetGatewayId:
+    Description: ID del Internet Gateway
+    Value: !Ref InternetGateway
+
+  PublicRouteTableId:
+    Description: ID della Route Table pubblica
+    Value: !Ref PublicRouteTable
+
+  RepositoryCloneUrlHttp:
+    Description: URL per clonare il repository tramite HTTP
+    Value: !GetAtt CodeCommitRepository.CloneUrlHttp
+  
+  RepositoryCloneUrlSsh:
+    Description: URL per clonare il repository tramite SSH
+    Value: !GetAtt CodeCommitRepository.CloneUrlSsh
+  
+  RepositoryArn:
+    Description: ARN del repository CodeCommit
+    Value: !GetAtt CodeCommitRepository.Arn
